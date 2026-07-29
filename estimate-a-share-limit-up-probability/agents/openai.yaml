@@ -1,0 +1,4 @@
+interface:
+  display_name: "A股涨停概率因子研究"
+  short_description: "拆解量价超跌题材换手等因子并生成可复算回测排序与综合匹配评分"
+  default_prompt: "使用 $estimate-a-share-limit-up-probability 筛选并回测符合量价共识的A股候选。"
