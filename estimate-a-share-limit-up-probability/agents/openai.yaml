@@ -1,4 +1,4 @@
 interface:
-  display_name: "A股涨停概率因子研究"
-  short_description: "拆解量价超跌题材换手等因子并生成可复算回测排序与综合匹配评分"
-  default_prompt: "使用 $estimate-a-share-limit-up-probability 筛选并回测符合量价共识的A股候选。"
+  display_name: "双创次日大涨候选"
+  short_description: "完整分页筛选双创小市值股票并运行红框量价、双模型及未过热强势排序"
+  default_prompt: "使用 $estimate-a-share-limit-up-probability 获取完整双创小市值股票池并生成次日大涨候选名单。"
