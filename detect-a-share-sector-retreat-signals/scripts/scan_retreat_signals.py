@@ -8,6 +8,7 @@ import json
 import sys
 from dataclasses import dataclass
 from datetime import date
+from pathlib import Path
 from typing import Iterable
 
 try:
@@ -58,6 +59,10 @@ ROLE_WEIGHTS = {
         "unclassified_price_collapse": 0.15,
     },
 }
+
+DEFAULT_CLASSIFICATION_CONFIG = (
+    Path(__file__).resolve().parents[1] / "config" / "stock_roles.json"
+)
 
 
 def mean(values: Iterable[float]) -> float | None:
@@ -269,6 +274,23 @@ def scan_stock(
     return events
 
 
+def load_classification_config(path: str | None) -> dict[str, dict]:
+    config_path = Path(path) if path else DEFAULT_CLASSIFICATION_CONFIG
+    if not config_path.exists():
+        return {}
+    with config_path.open(encoding="utf-8") as handle:
+        payload = json.load(handle)
+    stocks = payload.get("stocks")
+    if not isinstance(stocks, dict):
+        raise ValueError(f"{config_path}: stocks must be an object keyed by stock code")
+    for code, record in stocks.items():
+        if not isinstance(record, dict) or record.get("role") not in ROLE_WEIGHTS:
+            raise ValueError(
+                f"{config_path}: {code} must declare role as weight, emotion, or dual"
+            )
+    return stocks
+
+
 def parse_stock(value: str) -> tuple[str, str, str | None]:
     parts = value.split("=")
     if len(parts) not in (2, 3):
@@ -290,9 +312,17 @@ def main() -> int:
     parser.add_argument("--start", default="2025-08-01")
     parser.add_argument("--end", default=date.today().isoformat())
     parser.add_argument("--year", type=int)
+    parser.add_argument(
+        "--classification-config",
+        help=(
+            "JSON stock-role config. Defaults to config/stock_roles.json inside the skill. "
+            "An explicit role in --stocks overrides the config."
+        ),
+    )
     parser.add_argument("--output")
     args = parser.parse_args()
     year = args.year or int(args.end[:4])
+    classifications = load_classification_config(args.classification_config)
 
     login = bs.login()
     if login.error_code != "0":
@@ -306,7 +336,17 @@ def main() -> int:
             "signal_year": year,
             "stocks": [],
         }
-        for name, code, role in args.stocks:
+        for name, code, explicit_role in args.stocks:
+            classification = classifications.get(code, {})
+            role = explicit_role or classification.get("role")
+            if role is None:
+                raise ValueError(
+                    f"{code} has no company role. Add it to the classification config "
+                    "or pass NAME=CODE=weight|emotion|dual."
+                )
+            classification_source = (
+                "command_line_override" if explicit_role else "classification_config"
+            )
             bars = fetch_bars(code, args.start, args.end)
             events = scan_stock(name, code, role, bars, year)
             result["stocks"].append(
@@ -314,6 +354,13 @@ def main() -> int:
                     "name": name,
                     "code": code,
                     "company_role": role,
+                    "classification_source": classification_source,
+                    "classification_label": classification.get(
+                        "classification_label"
+                    ),
+                    "classification_rationale": classification.get("rationale"),
+                    "classification_confidence": classification.get("confidence"),
+                    "classification_reviewed_at": classification.get("reviewed_at"),
                     "bar_count": len(bars),
                     "events": events,
                 }

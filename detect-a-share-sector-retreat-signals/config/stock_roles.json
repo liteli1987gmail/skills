@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "reviewed_at": "2026-07-31",
+  "roles": {
+    "weight": "权重龙头",
+    "emotion": "情绪型或情绪型高关注标的",
+    "dual": "权重作用与情绪弹性并存的双重属性"
+  },
+  "stocks": {
+    "sz.300476": {
+      "name": "胜宏科技",
+      "role": "dual",
+      "classification_label": "双重属性",
+      "rationale": "PCB板块成交容量和定价影响较强，同时价格弹性显著；不按传统低弹性纯权重处理。",
+      "confidence": "medium",
+      "reviewed_at": "2026-07-31"
+    },
+    "sh.603181": {
+      "name": "皇马科技",
+      "role": "emotion",
+      "classification_label": "情绪型高关注标的",
+      "rationale": "未取得主要指数权重或板块核心定价权证据；按非权重、高弹性标的使用情绪因子。",
+      "confidence": "medium",
+      "reviewed_at": "2026-07-31"
+    },
+    "sz.002993": {
+      "name": "奥海科技",
+      "role": "emotion",
+      "classification_label": "情绪型",
+      "rationale": "消费电子与电源题材弹性明显，未取得足以归为主要权重龙头的证据。",
+      "confidence": "medium",
+      "reviewed_at": "2026-07-31"
+    },
+    "sz.002454": {
+      "name": "松芝股份",
+      "role": "emotion",
+      "classification_label": "情绪型高关注标的",
+      "rationale": "汽车热管理题材弹性标的，未取得主要指数权重或板块核心定价权证据。",
+      "confidence": "medium",
+      "reviewed_at": "2026-07-31"
+    },
+    "sh.603093": {
+      "name": "南华期货",
+      "role": "emotion",
+      "classification_label": "情绪型",
+      "rationale": "期货概念价格弹性较高，但不属于券商或非银板块核心权重。",
+      "confidence": "medium",
+      "reviewed_at": "2026-07-31"
+    },
+    "sz.301511": {
+      "name": "德福科技",
+      "role": "emotion",
+      "classification_label": "情绪型",
+      "rationale": "铜箔细分题材弹性明显，未取得主要指数权重或板块核心定价权证据。",
+      "confidence": "medium",
+      "reviewed_at": "2026-07-31"
+    }
+  }
+}

@@ -34,6 +34,15 @@ description: 按公司性质和差异化因子权重回测A股板块撤退、连
 
 分类必须给出当时的指数权重、自由流通市值、板块相对规模和价格弹性依据。无法证明权重时，默认降级为情绪型或“用户选定的高关注标的”，不要用“产业锚”替代权重证据。
 
+优先读取 [config/stock_roles.json](config/stock_roles.json) 中已有分类。每个配置必须包含：
+
+- `role`：机器使用的 `weight`、`emotion` 或 `dual`；
+- `classification_label`：面向用户的“权重龙头”“情绪型”“双重属性”或“情绪型高关注标的”；
+- `rationale`：分类依据与不能证明的边界；
+- `confidence` 与 `reviewed_at`：可信度和复核日期。
+
+命令行显式角色覆盖配置，但输出必须标注来源。配置中没有标的时，先完成硬分类，再用 `NAME=CODE=role` 运行；不得静默套用默认角色。分类是有日期的研究判断，不是永久标签。
+
 ### 3. 使用差异化因子权重
 
 权重表示该因子对该类型公司的决策强度，不是统计学习结果：
@@ -173,12 +182,12 @@ description: 按公司性质和差异化因子权重回测A股板块撤退、连
 
 ```bash
 python scripts/scan_retreat_signals.py \
-  --stocks 奥海科技=sz.002993=emotion 华虹宏力=sh.688347=weight \
+  --stocks 奥海科技=sz.002993 胜宏科技=sz.300476 \
   --start 2025-08-01 \
   --end 2026-07-30
 ```
 
-脚本默认使用前20个交易日上涨日均成交额，并同时输出20日全体均额和60日上涨日均额，用于发现基准漂移。缺少 `baostock` 时在临时虚拟环境安装，不污染用户项目环境。
+脚本默认读取skill内的股票分类配置。也可用 `--classification-config` 指定其他JSON配置，或在 `--stocks` 中显式提供角色覆盖配置。脚本默认使用前20个交易日上涨日均成交额，并同时输出20日全体均额和60日上涨日均额，用于发现基准漂移。缺少 `baostock` 时在临时虚拟环境安装，不污染用户项目环境。
 
 需要理解规则修正、反例和用户质疑时，读取 [references/challenges-and-corrections.md](references/challenges-and-corrections.md)。
 
