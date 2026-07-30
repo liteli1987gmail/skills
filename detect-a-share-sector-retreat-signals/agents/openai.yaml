@@ -1,0 +1,4 @@
+interface:
+  display_name: "板块撤退信号"
+  short_description: "区分公司性质，识别A股放量踩踏与严重承接坍缩"
+  default_prompt: "使用 $detect-a-share-sector-retreat-signals 先判断公司属于权重、情绪或双重属性，再按差异化因子权重寻找最早撤退信号。"
