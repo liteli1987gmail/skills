@@ -17,10 +17,10 @@
     },
     "sz.300476": {
       "name": "胜宏科技",
-      "role": "dual",
-      "classification_label": "双重属性",
-      "rationale": "PCB板块成交容量和定价影响较强，同时价格弹性显著；不按传统低弹性纯权重处理。",
-      "confidence": "medium",
+      "role": "emotion",
+      "classification_label": "情绪型",
+      "rationale": "按用户确认的配置处理；即使成交容量和PCB板块影响较强，本模型仍以高弹性情绪标的口径判断，优先使用两日高成交额踩踏与严重承接坍缩路径。",
+      "confidence": "user_confirmed",
       "reviewed_at": "2026-07-31"
     },
     "sh.603181": {
