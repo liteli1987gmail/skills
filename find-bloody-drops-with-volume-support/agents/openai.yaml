@@ -1,0 +1,4 @@
+interface:
+  display_name: "寻找流血多血包多"
+  short_description: "扫描小市值A股连续下跌与局部成交额异常并生成候选清单"
+  default_prompt: "使用 $find-bloody-drops-with-volume-support 扫描指定板块和日期的小市值连续下跌成交额候选。"
