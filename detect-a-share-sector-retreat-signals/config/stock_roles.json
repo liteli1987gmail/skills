@@ -7,6 +7,14 @@
     "dual": "权重作用与情绪弹性并存的双重属性"
   },
   "stocks": {
+    "sz.000636": {
+      "name": "风华高科",
+      "role": "emotion",
+      "classification_label": "情绪型",
+      "rationale": "按用户确认的配置处理；其MLCC细分地位不自动等同证券市场权重，撤退判断优先使用情绪票的高成交额踩踏与严重承接坍缩路径。",
+      "confidence": "user_confirmed",
+      "reviewed_at": "2026-07-31"
+    },
     "sz.300476": {
       "name": "胜宏科技",
       "role": "dual",
