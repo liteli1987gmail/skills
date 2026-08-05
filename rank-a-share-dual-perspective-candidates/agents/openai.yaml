@@ -1,4 +1,4 @@
 interface:
   display_name: "A股正逆向双视角研究"
-  short_description: "批量查询腾讯筹码与预亏，并生成正向及完全逆向研究观察名单"
-  default_prompt: "使用 $rank-a-share-dual-perspective-candidates 分析这份A股名单，查询筹码与预亏并输出正向及逆向研究观察候选。"
+  short_description: "查询筹码、预亏与多源前复权行情，生成正向和逆向研究观察名单"
+  default_prompt: "使用 $rank-a-share-dual-perspective-candidates 分析这份A股名单，在行情源失败时自动降级并输出正向与逆向研究观察名单。"

@@ -25,11 +25,11 @@
 | `chipConcentration90` | 90%筹码成本集中度，越低越集中 |
 | `postEventReturnPct` | 事件日至分析截止日收益率 |
 | `volumeSupportScore` | 按统一规则评估的量价承接分，0至100 |
-| `earningsStatus` | 最新相关报告期的业绩预告状态 |
-| `tradeable` | 截止日是否可交易；明确为`false`时剔除 |
-| `hardRisk` | 是否触发不可倒置硬风险；为`true`时剔除 |
+| `earningsStatus` | 最新相关报告期的业绩预告状态；聚合源空结果未经官方核验时使用`no_forecast_unverified` |
+| `tradeable` | 截止日是否可交易；只有明确为`true`才通过门槛 |
+| `hardRisk` | 是否触发不可倒置硬风险；只有明确为`false`才通过门槛 |
 | `riskFlags` | 退市、违法、持续经营、偿债等风险原因数组 |
-| `reversalTrigger` | 逆向名单是否已有止跌触发 |
+| `reversalTrigger` | 逆向名单是否已有止跌触发；无法取得事件行情时保持缺失，不得写成`false` |
 
 成本偏离：
 
@@ -62,6 +62,8 @@ costGapPct = (closePrice / chipAvgCost - 1) × 100
 | `loss` | 0.00 |
 | `unknown`或字段缺失 | 不参与 |
 
+`no_forecast`必须来自成功完成的官方公告检索。东方财富初筛无记录使用`no_forecast_unverified`，按`unknown`处理，不参与评分。
+
 只对可用因子加权并重新归一化：
 
 ```text
@@ -69,7 +71,7 @@ positiveScore = 100 × Σ(weight × mappedValue) / Σ(availableWeight)
 coverage = Σ(availableWeight) / 100
 ```
 
-覆盖率低于60%或筹码核心字段少于两个时不进入正式排名。
+覆盖率低于60%、筹码核心字段少于两个，或`tradeable`/`hardRisk`未完成明确核验时不进入正式排名。
 
 ## 3. 完全逆向评分
 
@@ -86,6 +88,7 @@ reverseScore = 100 - positiveScore
 - `reverseRanking`：完整的逆向相对排序；
 - `reverseWatchlist`：达到最低分数门槛但未确认止跌；
 - `reverseTriggered`：达到最低分数门槛且`reversalTrigger=true`。
+- `reverseUnassessed`：达到分数门槛但历史行情缺失，无法判断止跌；不得并入“未触发”观察池。
 
 默认正向和逆向候选最低分数均为60。可以显式调整，但报告必须披露门槛；无人达标时返回空名单。`reverseTriggered`仍然只是研究观察条件，不是买入确认。
 

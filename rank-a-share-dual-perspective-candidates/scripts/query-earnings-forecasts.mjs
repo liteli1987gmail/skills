@@ -14,9 +14,9 @@ function parseArgs(argv) {
 }
 
 function normalizeCode(raw) {
-  const code = String(raw).replace(/^(sh|sz|bj)/i, "").replace(/\D/g, "");
-  if (!/^\d{6}$/.test(code)) throw new Error(`Invalid A-share code: ${raw}`);
-  return code;
+  const match = String(raw).trim().toLowerCase().match(/^(?:(sh|sz|bj))?(\d{6})$/);
+  if (!match) throw new Error(`Invalid A-share code: ${raw}`);
+  return match[2];
 }
 
 function dateOnly(value) {
@@ -32,7 +32,38 @@ function classify(row) {
   return "mixed";
 }
 
-async function query(code, asOf, reportDate) {
+const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+async function fetchPayload(url, attempts, timeoutMs) {
+  let lastError;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      const response = await fetch(url, {
+        headers: { Referer: "https://data.eastmoney.com/", "User-Agent": "Mozilla/5.0" },
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+      const text = await response.text();
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      if (!text.trim()) throw new Error("empty response");
+      let payload;
+      try {
+        payload = JSON.parse(text);
+      } catch {
+        throw new Error("invalid JSON response");
+      }
+      if (payload?.success !== true || Number(payload?.code) !== 0 || !Array.isArray(payload?.result?.data)) {
+        throw new Error(`invalid response envelope: success=${payload?.success}, code=${payload?.code}, dataIsArray=${Array.isArray(payload?.result?.data)}`);
+      }
+      return payload;
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts) await sleep(400 * attempt);
+    }
+  }
+  throw lastError;
+}
+
+async function query(code, asOf, reportDate, attempts, timeoutMs) {
   const url = new URL("https://datacenter-web.eastmoney.com/api/data/v1/get");
   url.searchParams.set("reportName", "RPT_PUBLIC_OP_NEWPREDICT");
   url.searchParams.set("columns", "ALL");
@@ -42,10 +73,8 @@ async function query(code, asOf, reportDate) {
   url.searchParams.set("sortColumns", "NOTICE_DATE");
   url.searchParams.set("sortTypes", "-1");
 
-  const response = await fetch(url, { headers: { Referer: "https://data.eastmoney.com/" } });
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  const payload = await response.json();
-  let rows = payload?.result?.data || [];
+  const payload = await fetchPayload(url, attempts, timeoutMs);
+  let rows = payload.result.data;
   rows = rows.filter((row) => String(row.PREDICT_FINANCE_CODE) === "004");
   if (asOf) rows = rows.filter((row) => dateOnly(row.NOTICE_DATE) <= asOf);
   if (reportDate) rows = rows.filter((row) => dateOnly(row.REPORT_DATE) === reportDate);
@@ -54,7 +83,13 @@ async function query(code, asOf, reportDate) {
     return reportOrder || dateOnly(b.NOTICE_DATE).localeCompare(dateOnly(a.NOTICE_DATE));
   });
   const row = rows[0];
-  if (!row) return { code, status: "no_forecast" };
+  if (!row) return {
+    code,
+    status: "no_forecast_unverified",
+    screeningStatus: "no_forecast",
+    officialVerificationRequired: true,
+    note: "东方财富初筛在指定条件下无记录；完成巨潮资讯或交易所官方检索前不得按 no_forecast 计分",
+  };
   return {
     code,
     name: row.SECURITY_NAME_ABBR,
@@ -96,12 +131,16 @@ if (!args.codes) {
 const codes = [...new Set(String(args.codes).split(",").map(normalizeCode))];
 const asOf = args["as-of"] || new Date().toISOString().slice(0, 10);
 const reportDate = args["report-date"] || "";
-const stocks = await mapLimit(codes, Number(args.concurrency || 8), (code) => query(code, asOf, reportDate));
+const attempts = Math.max(1, Number(args.attempts || 3));
+const timeoutMs = Math.max(1000, Number(args["timeout-ms"] || 15000));
+const stocks = await mapLimit(codes, Number(args.concurrency || 6), (code) => query(code, asOf, reportDate, attempts, timeoutMs));
 const result = {
   generatedAt: new Date().toISOString(),
   source: "Eastmoney structured forecast cross-check; verify loss rows with CNInfo/SZSE/SSE",
   asOfDate: asOf,
   reportDate: reportDate || null,
+  attempts,
+  timeoutMs,
   requestedCount: codes.length,
   successCount: stocks.filter((row) => row.status !== "query_failed").length,
   failedCodes: stocks.filter((row) => row.status === "query_failed").map((row) => row.code),

@@ -91,7 +91,12 @@ function scoreStock(stock) {
   const chipFactorCount = factors.filter((factor) => ["costPosition", "profitRate", "concentration"].includes(factor.key)).length;
   const coverage = availableWeight / 100;
   const excludedByHardRisk = stock.hardRisk === true || stock.tradeable === false;
-  const eligible = coverage >= 0.6 && chipFactorCount >= 2 && !excludedByHardRisk;
+  const riskGateVerified = stock.hardRisk === false && stock.tradeable === true;
+  const riskGateUnknown = !excludedByHardRisk && !riskGateVerified;
+  const eligible = coverage >= 0.6 && chipFactorCount >= 2 && riskGateVerified;
+  const reversalTriggerState = stock.reversalTrigger === true
+    ? "observed"
+    : stock.reversalTrigger === false ? "not_observed" : "unknown";
 
   const positiveReasons = [...factors]
     .sort((a, b) => b.value - a.value)
@@ -110,7 +115,10 @@ function scoreStock(stock) {
     coverage: round(coverage),
     eligible,
     excludedByHardRisk,
-    reversalTriggerObserved: eligible && stock.reversalTrigger === true,
+    riskGateVerified,
+    riskGateUnknown,
+    reversalTriggerState,
+    reversalTriggerObserved: eligible && reversalTriggerState === "observed",
     costGapPct: costGapPct === null ? null : round(costGapPct),
     positiveReasons,
     reverseReasons,
@@ -145,8 +153,9 @@ const positiveRanking = [...eligible].sort((a, b) => b.positiveScore - a.positiv
 const reverseRanking = [...eligible].sort((a, b) => b.reverseScore - a.reverseScore).slice(0, top);
 const positiveCandidates = positiveRanking.filter((stock) => stock.positiveScore >= minScore);
 const reverseCandidates = reverseRanking.filter((stock) => stock.reverseScore >= minScore);
-const reverseWatchlist = reverseCandidates.filter((stock) => !stock.reversalTriggerObserved);
+const reverseWatchlist = reverseCandidates.filter((stock) => stock.reversalTriggerState === "not_observed");
 const reverseTriggered = reverseCandidates.filter((stock) => stock.reversalTriggerObserved);
+const reverseUnassessed = reverseCandidates.filter((stock) => stock.reversalTriggerState === "unknown");
 const parityComparable = scored.filter((stock) => stock.positiveScore !== null);
 const parityFailures = parityComparable.filter((stock) => Math.abs(stock.positiveScore + stock.reverseScore - 100) > 0.02);
 const inputAliasesUsed = normalizedEntries.flatMap(({ stock, aliasesUsed }) => (
@@ -155,6 +164,8 @@ const inputAliasesUsed = normalizedEntries.flatMap(({ stock, aliasesUsed }) => (
 const validationWarnings = [];
 if (!eligible.length) validationWarnings.push("No stocks passed factor coverage, chip field, and hard-risk eligibility checks");
 if (inputAliasesUsed.length) validationWarnings.push("Input field aliases were normalized; use canonical names for reproducibility");
+if (scored.some((stock) => stock.riskGateUnknown)) validationWarnings.push("Stocks with unknown tradeability or hard-risk status were excluded until the risk gate is explicitly verified");
+if (reverseUnassessed.length) validationWarnings.push("Reverse candidates with unknown reversalTrigger were separated into reverseUnassessed, not treated as no trigger");
 
 const result = {
   generatedAt: new Date().toISOString(),
@@ -172,6 +183,7 @@ const result = {
   reverseRanking,
   reverseWatchlist,
   reverseTriggered,
+  reverseUnassessed,
   allStocks: scored,
 };
 

@@ -20,12 +20,19 @@ function parseArgs(argv) {
 
 function normalizeCode(raw) {
   const value = String(raw).trim().toLowerCase();
-  const digits = value.replace(/^(sh|sz|bj)/, "").replace(/\D/g, "");
-  if (!/^\d{6}$/.test(digits)) throw new Error(`Invalid A-share code: ${raw}`);
-  if (/^(000|001|002|003|300|301)/.test(digits)) return `sz${digits}`;
-  if (/^(600|601|603|605|688)/.test(digits)) return `sh${digits}`;
-  if (/^[489]/.test(digits)) return `bj${digits}`;
-  throw new Error(`Unsupported A-share code: ${raw}`);
+  const match = value.match(/^(?:(sh|sz|bj))?(\d{6})$/);
+  if (!match) throw new Error(`Invalid A-share code: ${raw}`);
+  const explicitExchange = match[1] || null;
+  const digits = match[2];
+  let exchange;
+  if (/^(000|001|002|003|300|301)/.test(digits)) exchange = "sz";
+  else if (/^(500|510|511|512|513|515|516|517|518|560|561|562|563|588|600|601|603|605|688|689)/.test(digits)) exchange = "sh";
+  else if (/^[489]/.test(digits)) exchange = "bj";
+  else throw new Error(`Unsupported A-share code: ${raw}`);
+  if (explicitExchange && explicitExchange !== exchange) {
+    throw new Error(`Exchange prefix mismatch: ${raw} should use ${exchange}`);
+  }
+  return `${exchange}${digits}`;
 }
 
 function commandExists(command, env) {
@@ -100,7 +107,14 @@ const requested = [...new Set(String(args.codes).split(",").map(normalizeCode))]
 const env = { ...process.env };
 env.PATH = `${dirname(process.execPath)}:${env.PATH || ""}`;
 const runner = chooseRunner(args.runner || "auto", env);
-let records = parseMarkdown(runChip(runner, requested, args.date, env));
+let records = [];
+let batchError = null;
+const retryFailures = [];
+try {
+  records = parseMarkdown(runChip(runner, requested, args.date, env));
+} catch (error) {
+  batchError = String(error?.message || error);
+}
 const received = new Set(records.map((record) => record.symbol));
 const missing = requested.filter((code) => !received.has(code));
 
@@ -108,8 +122,8 @@ for (const code of missing) {
   try {
     const retry = parseMarkdown(runChip(runner, [code], args.date, env));
     records.push(...retry);
-  } catch {
-    // Failure is reported below; do not replace with fabricated values.
+  } catch (error) {
+    retryFailures.push({ symbol: code, code: code.slice(2), error: String(error?.message || error) });
   }
 }
 
@@ -121,7 +135,9 @@ const result = {
   package: PACKAGE,
   requestedCount: requested.length,
   successCount: records.length,
+  batchError,
   failedCodes: requested.filter((code) => !finalReceived.has(code)),
+  retryFailures,
   stocks: records,
 };
 
